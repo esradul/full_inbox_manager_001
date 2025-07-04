@@ -4,13 +4,24 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { useSupabase } from '@/contexts/supabase-context';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const responseSchema = z.object({
   reply: z.string().min(1, "Response cannot be empty."),
@@ -39,6 +50,19 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit response.' });
     } else {
       toast({ title: 'Success', description: 'Escalation handled.' });
+      onAction();
+    }
+    setIsSubmitting(false);
+  };
+  
+  const handleRemove = async () => {
+    if (!supabase || !credentials?.table) return;
+    setIsSubmitting(true);
+    const { error } = await supabase.from(credentials.table).delete().eq('id', item.id);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove item.' });
+    } else {
+      toast({ title: 'Success', description: 'Item removed.' });
       onAction();
     }
     setIsSubmitting(false);
@@ -91,7 +115,31 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isSubmitting}>Submit Response</Button>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={isSubmitting}>Submit Response</Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="destructive" disabled={isSubmitting}>Remove</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete this item.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleRemove} 
+                      className={buttonVariants({ variant: "destructive" })}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </form>
         </Form>
       </CardFooter>

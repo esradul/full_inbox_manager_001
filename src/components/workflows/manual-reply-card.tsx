@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
@@ -12,6 +12,17 @@ import { useSupabase } from '@/contexts/supabase-context';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const replySchema = z.object({
   reply: z.string().min(1, "Reply cannot be empty."),
@@ -41,6 +52,19 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit reply.' });
     } else {
       toast({ title: 'Success', description: 'Reply submitted.' });
+      onAction();
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleRemove = async () => {
+    if (!supabase || !credentials?.table) return;
+    setIsSubmitting(true);
+    const { error } = await supabase.from(credentials.table).delete().eq('id', item.id);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove item.' });
+    } else {
+      toast({ title: 'Success', description: 'Item removed.' });
       onAction();
     }
     setIsSubmitting(false);
@@ -97,18 +121,42 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
                 </FormItem>
               )}
             />
-            <div className="flex flex-col md:flex-row gap-4 items-center">
-              <FormField
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                  <FormItem className="flex-1 w-full">
+                  <FormItem className="flex-grow w-full md:w-auto">
                     <Input placeholder="Your Name (Optional)" {...field} className="bg-background" disabled={isSubmitting}/>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={isSubmitting}>Submit Reply</Button>
+              <div className="flex gap-2 self-end">
+                <Button type="submit" disabled={isSubmitting}>Submit Reply</Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive" disabled={isSubmitting}>Remove</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete this item.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleRemove} 
+                        className={buttonVariants({ variant: "destructive" })}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </form>
         </Form>

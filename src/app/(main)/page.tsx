@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSupabase } from '@/contexts/supabase-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
@@ -12,6 +12,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { addDays, format } from 'date-fns';
 import type { DateRange } from "react-day-picker";
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 type Status = 'Approval' | 'Objection' | 'Manual Handle' | 'Waiting' | 'Escalation' | 'Cancel' | 'Important' | 'Bookcall';
 type Record = {
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<Record[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRealtime, setIsRealtime] = useState(true);
+  const { toast } = useToast();
   
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -7),
@@ -52,8 +54,11 @@ export default function DashboardPage() {
   });
   const [preset, setPreset] = useState<string>("7");
 
-  const fetchData = async () => {
-    if (!supabase || !credentials?.table) return;
+  const fetchData = useCallback(async () => {
+    if (!supabase || !credentials?.table) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
 
     const query = supabase
@@ -74,15 +79,20 @@ export default function DashboardPage() {
     
     if (error) {
       console.error("Error fetching data:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to fetch data',
+        description: error.message || 'There was a problem connecting to your Supabase table. Please check your configuration.',
+      });
     } else if (records) {
       setData(records as Record[]);
     }
     setIsLoading(false);
-  };
+  }, [supabase, credentials, date, toast]);
   
   useEffect(() => {
     fetchData();
-  }, [supabase, credentials?.table, date]);
+  }, [fetchData]);
 
   useEffect(() => {
     if (!supabase || !credentials?.table || !isRealtime) return;
@@ -96,7 +106,7 @@ export default function DashboardPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, credentials?.table, isRealtime, date]);
+  }, [supabase, credentials?.table, isRealtime, fetchData]);
 
   const handlePresetChange = (value: string) => {
     setPreset(value);

@@ -5,6 +5,7 @@ import { useSupabase } from '@/contexts/supabase-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface ContentWorkflowProps<T> {
   filter: Record<string, any>;
@@ -16,6 +17,7 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
   const { supabase, credentials } = useSupabase();
   const [items, setItems] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     if (!supabase || !credentials?.table) {
@@ -36,12 +38,16 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
 
     const { data, error } = await query;
     if (error) {
-      console.error("Error fetching workflow items:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to fetch workflow items',
+        description: error.message,
+      });
     } else {
       setItems(data as T[]);
     }
     setIsLoading(false);
-  }, [supabase, credentials, filter]);
+  }, [supabase, credentials, filter, toast]);
   
   useEffect(() => {
     fetchData();

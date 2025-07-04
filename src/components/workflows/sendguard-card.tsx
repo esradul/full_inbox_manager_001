@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useSupabase } from '@/contexts/supabase-context';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const actionSchema = z.object({
   action: z.enum(['Approval', 'Objection', 'Manual Handle']),
@@ -94,18 +95,29 @@ export function SendGuardCard({ item, onAction }: { item: any, onAction: () => v
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid md:grid-cols-2 gap-x-6">
-          <div>
-            {renderField('Thread Context', item.Previous_Emails_Summary)}
-            {renderField('Current Customer Message', item.Customer_Email)}
-            {renderField('CRM Notes', item.CRM_notes)}
+        {renderField('Thread Context', item.Previous_Emails_Summary)}
+        {renderField('Thought Process', item.reasoning)}
+        {renderField('Current Customer Message', item.Customer_Email)}
+        
+        {item.CRM_notes && (
+          <div className="mb-4">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="crm-notes" className="border-b-0">
+                <AccordionTrigger className="py-2 font-semibold text-sm text-muted-foreground hover:no-underline">
+                  <span className="flex-1 text-left">CRM Notes</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="p-3 rounded-md bg-muted/50 text-sm whitespace-pre-wrap">
+                    {item.CRM_notes}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
-          <div>
-            {renderField('Thought Process', item.reasoning)}
-            {item.bookcall && renderField('Availabilities', item.Availabilities)}
-            {renderField('Draft Reply', item.draft_reply)}
-          </div>
-        </div>
+        )}
+        
+        {item.bookcall && renderField('Availabilities', item.Availabilities)}
+        {renderField('Draft Reply', item.draft_reply)}
       </CardContent>
       <CardFooter className="bg-muted/50 p-4 rounded-b-lg">
         <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-4">

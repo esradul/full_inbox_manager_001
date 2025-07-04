@@ -4,6 +4,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSupabase } from '@/contexts/supabase-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PieChart, Pie, Tooltip, Legend } from 'recharts';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
 import { 
   BarChart, 
   Calendar as CalendarIcon, 
@@ -17,11 +26,8 @@ import {
   Clock 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Label } from '@/components/ui/label';
-import { addDays, format } from 'date-fns';
-import type { DateRange } from "react-day-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { addDays } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,32 +53,25 @@ const statusDetails: Record<string, { icon: React.ElementType; color: string }> 
   Waiting: { icon: Clock, color: 'text-muted-foreground' },
 };
 
+const chartConfig = {
+  Approval: { label: 'Approval', color: 'hsl(var(--chart-1))' },
+  Objection: { label: 'Objection', color: 'hsl(var(--destructive))' },
+  'Manual Handle': { label: 'Manual Handle', color: 'hsl(var(--chart-2))' },
+  Waiting: { label: 'Waiting', color: 'hsl(var(--muted-foreground))' },
+  Escalation: { label: 'Escalation', color: 'hsl(var(--chart-3))' },
+  Cancel: { label: 'Cancel', color: 'hsl(var(--muted-foreground))' },
+  Important: { label: 'Important', color: 'hsl(var(--chart-4))' },
+  Bookcall: { label: 'Bookcall', color: 'hsl(var(--chart-5))' },
+} satisfies ChartConfig;
+
 
 export default function DashboardPage() {
   const { supabase, credentials, isLoading: isSupabaseLoading } = useSupabase();
   const [data, setData] = useState<Record[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [timeRange, setTimeRange] = useState('7d');
   
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: addDays(new Date(), -7),
-    to: new Date(),
-  });
-  
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const [tempStartDate, setTempStartDate] = useState<Date | undefined>(date?.from);
-  const [tempEndDate, setTempEndDate] = useState<Date | undefined>(date?.to);
-
-  useEffect(() => {
-    setTempStartDate(date?.from);
-    setTempEndDate(date?.to);
-  }, [date]);
-
-  const handleApplyDateRange = () => {
-    setDate({ from: tempStartDate, to: tempEndDate });
-    setPopoverOpen(false);
-  };
-
   const fetchData = useCallback(async () => {
     if (!supabase || !credentials?.table) {
       setIsLoading(false);
@@ -80,19 +79,30 @@ export default function DashboardPage() {
     }
     setIsLoading(true);
 
+    let fromDate;
+    const toDate = new Date();
+
+    switch (timeRange) {
+      case '24h':
+        fromDate = addDays(toDate, -1);
+        break;
+      case '7d':
+        fromDate = addDays(toDate, -7);
+        break;
+      case '30d':
+        fromDate = addDays(toDate, -30);
+        break;
+      case '90d':
+        fromDate = addDays(toDate, -90);
+        break;
+      default:
+        fromDate = addDays(toDate, -7);
+    }
+    
     const query = supabase
       .from(credentials.table)
-      .select('id, created_at, permission, escalation, cancel, important, bookcall');
-
-    if (date?.from) {
-      query.gte('created_at', date.from.toISOString());
-    }
-    if (date?.to) {
-      // Add one day to 'to' date to include the whole day
-      const toDate = new Date(date.to);
-      toDate.setDate(toDate.getDate() + 1);
-      query.lte('created_at', toDate.toISOString());
-    }
+      .select('id, created_at, permission, escalation, cancel, important, bookcall')
+      .gte('created_at', fromDate.toISOString());
 
     const { data: records, error } = await query;
     
@@ -106,7 +116,7 @@ export default function DashboardPage() {
       setData(records as Record[]);
     }
     setIsLoading(false);
-  }, [supabase, credentials, date, toast]);
+  }, [supabase, credentials, timeRange, toast]);
   
   useEffect(() => {
     fetchData();
@@ -126,7 +136,7 @@ export default function DashboardPage() {
     };
   }, [supabase, credentials?.table, fetchData]);
   
-  const { liveStats } = useMemo(() => {
+  const { liveStats, permissionChartData, overallChartData } = useMemo(() => {
     const permissionCounts: Record<string, number> = { 'Approval': 0, 'Objection': 0, 'Manual Handle': 0 };
     const overallCounts: Record<string, number> = { 'Escalation': 0, 'Cancel': 0, 'Important': 0, 'Bookcall': 0 };
     let waitingCount = 0;
@@ -154,8 +164,27 @@ export default function DashboardPage() {
       Bookcall: overallCounts['Bookcall'],
       Waiting: waitingCount,
     };
+    
+    const pChartData = Object.entries({
+      Approval: stats.Approval,
+      Objection: stats.Objection,
+      'Manual Handle': stats['Manual Handle'],
+      Waiting: stats.Waiting,
+    })
+    .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
+    .filter(item => item.value > 0);
 
-    return { liveStats: stats };
+    const oChartData = Object.entries({
+      Escalation: stats.Escalation,
+      Cancel: stats.Cancel,
+      Important: stats.Important,
+      Bookcall: stats.Bookcall,
+    })
+    .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
+    .filter(item => item.value > 0);
+
+
+    return { liveStats: stats, permissionChartData: pChartData, overallChartData: oChartData };
   }, [data]);
 
   const renderLoadingSkeleton = () => (
@@ -168,6 +197,10 @@ export default function DashboardPage() {
               </div>
             </CardContent>
         </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Skeleton className="h-[350px] w-full" />
+            <Skeleton className="h-[350px] w-full" />
+        </div>
     </div>
   );
 
@@ -197,52 +230,24 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center gap-4">
             <h1 className="text-2xl font-semibold">Monitoring Dashboard</h1>
             <div className="ml-auto flex items-center gap-2">
-                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                    <PopoverTrigger asChild>
-                        <Button variant={"outline"}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            <span>Custom Range</span>
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4 space-y-3" align="end">
-                        <div className="space-y-1">
-                            <Label>Start Date</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className="w-[240px] justify-start text-left font-normal">
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {tempStartDate ? format(tempStartDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar mode="single" selected={tempStartDate} onSelect={setTempStartDate} initialFocus />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <div className="space-y-1">
-                            <Label>End Date</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className="w-[240px] justify-start text-left font-normal">
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {tempEndDate ? format(tempEndDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar mode="single" selected={tempEndDate} onSelect={setTempEndDate} />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <Button onClick={handleApplyDateRange} className="w-full">Apply Custom Range</Button>
-                    </PopoverContent>
-                </Popover>
+                <Select value={timeRange} onValueChange={setTimeRange}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select a time range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="24h">Last 24 hours</SelectItem>
+                        <SelectItem value="7d">Last 7 days</SelectItem>
+                        <SelectItem value="30d">Last 30 days</SelectItem>
+                        <SelectItem value="90d">Last 90 days</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
         </div>
 
         <Card>
             <CardHeader><CardTitle>Live Statistics</CardTitle></CardHeader>
             <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
                     {Object.entries(liveStats).map(([status, count]) => {
                         const details = statusDetails[status];
                         const Icon = details?.icon;
@@ -257,6 +262,61 @@ export default function DashboardPage() {
                 </div>
             </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Permission Status Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? <Skeleton className="h-[250px] w-full" /> : 
+                    permissionChartData.length > 0 ? (
+                        <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
+                            <PieChart>
+                                <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                                <Pie data={permissionChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index }) => {
+                                    const RADIAN = Math.PI / 180;
+                                    const radius = 25 + innerRadius + (outerRadius - innerRadius);
+                                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                    return <text x={x} y={y} fill="currentColor" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" className="text-xs fill-foreground">{value}</text>
+                                }}/>
+                                <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                            </PieChart>
+                        </ChartContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-[250px] text-muted-foreground">No data for this period.</div>
+                    )}
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Overall Status Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? <Skeleton className="h-[250px] w-full" /> : 
+                    overallChartData.length > 0 ? (
+                        <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
+                            <PieChart>
+                                <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                                <Pie data={overallChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index }) => {
+                                    const RADIAN = Math.PI / 180;
+                                    const radius = 25 + innerRadius + (outerRadius - innerRadius);
+                                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                    return <text x={x} y={y} fill="currentColor" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" className="text-xs fill-foreground">{value}</text>
+                                }}/>
+                                <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                            </PieChart>
+                        </ChartContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-[250px] text-muted-foreground">No data for this period.</div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     </div>
   );
 }
+
+    

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSupabase } from '@/contexts/supabase-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie } from 'recharts';
@@ -14,7 +14,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart';
 import { 
-  BarChart, 
+  Database,
   Calendar as CalendarIcon, 
   CheckCircle2, 
   XCircle, 
@@ -29,11 +29,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { addDays, format } from 'date-fns';
-import { type DateRange } from "react-day-picker"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import type { SupabaseRealtimePayload } from '@supabase/supabase-js';
 
 type Status = 'Approval' | 'Objection' | 'Manual Handle' | 'Waiting' | 'Escalation' | 'Cancel' | 'Important' | 'Bookcall';
 type Record = {
@@ -47,6 +48,7 @@ type Record = {
 };
 
 const statusDetails: Record<string, { icon: React.ElementType; color: string }> = {
+  Total: { icon: Database, color: 'text-primary' },
   Approval: { icon: CheckCircle2, color: 'text-chart-1' },
   Objection: { icon: XCircle, color: 'text-destructive' },
   'Manual Handle': { icon: MessageSquare, color: 'text-chart-2' },
@@ -74,9 +76,15 @@ export default function DashboardPage() {
   const [data, setData] = useState<Record[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const [timeRange, setTimeRange] = useState('7d');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
+  const [timeRange, setTimeRange] = useState('7d');
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [isCustomPopoverOpen, setCustomPopoverOpen] = useState(false);
+  
+  const [realtime, setRealtime] = useState(true);
+  const realtimeChannel = useRef<ReturnType<SupabaseClient['channel']> | null>(null);
+
   const fetchData = useCallback(async () => {
     if (!supabase || !credentials?.table) {
       setIsLoading(false);
@@ -88,9 +96,9 @@ export default function DashboardPage() {
       .from(credentials.table)
       .select('id, created_at, permission, escalation, cancel, important, bookcall');
 
-    if (timeRange === 'custom' && dateRange?.from) {
-        const from = dateRange.from;
-        const to = dateRange.to ? dateRange.to : from;
+    if (timeRange === 'custom' && startDate) {
+        const from = startDate;
+        const to = endDate ? endDate : from;
         const toEndOfDay = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
   
         query = query.gte('created_at', from.toISOString()).lte('created_at', toEndOfDay.toISOString());
@@ -119,25 +127,50 @@ export default function DashboardPage() {
       setData(records as Record[]);
     }
     setIsLoading(false);
-  }, [supabase, credentials, timeRange, dateRange, toast]);
+  }, [supabase, credentials, timeRange, startDate, endDate, toast]);
   
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  const handleRealtimeUpdate = useCallback((payload: SupabaseRealtimePayload<any>) => {
+    fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
-    if (!supabase || !credentials?.table) return;
-
-    const channel = supabase.channel(`realtime-dashboard`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: credentials.table }, (payload) => {
-        fetchData();
-      })
-      .subscribe();
-
+    if (realtime && supabase && credentials?.table) {
+      if (!realtimeChannel.current) {
+        realtimeChannel.current = supabase
+          .channel('realtime-dashboard')
+          .on('postgres_changes', { event: '*', schema: 'public', table: credentials.table }, handleRealtimeUpdate)
+          .subscribe();
+      }
+    } else {
+      if (realtimeChannel.current) {
+        supabase.removeChannel(realtimeChannel.current);
+        realtimeChannel.current = null;
+      }
+    }
     return () => {
-      supabase.removeChannel(channel);
+      if (realtimeChannel.current) {
+        supabase.removeChannel(realtimeChannel.current);
+        realtimeChannel.current = null;
+      }
     };
-  }, [supabase, credentials?.table, fetchData]);
+  }, [realtime, supabase, credentials, handleRealtimeUpdate]);
+
+  const handleApplyCustomRange = () => {
+    if (startDate) {
+        setTimeRange('custom');
+        setCustomPopoverOpen(false);
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Start date required",
+            description: "Please select a start date for the custom range.",
+        });
+    }
+  };
   
   const { liveStats, permissionChartData, overallChartData } = useMemo(() => {
     const permissionCounts: Record<string, number> = { 'Approval': 0, 'Objection': 0, 'Manual Handle': 0 };
@@ -158,6 +191,7 @@ export default function DashboardPage() {
     });
 
     const stats = {
+      Total: data.length,
       Approval: permissionCounts['Approval'],
       Objection: permissionCounts['Objection'],
       'Manual Handle': permissionCounts['Manual Handle'],
@@ -195,8 +229,8 @@ export default function DashboardPage() {
         <Card>
             <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
               </div>
             </CardContent>
         </Card>
@@ -220,7 +254,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                   <p className="mb-4">Please configure your Supabase connection to get started.</p>
-                  <BarChart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <Database className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-sm text-muted-foreground">Click the profile icon in the top right to open settings.</p>
               </CardContent>
           </Card>
@@ -236,7 +270,8 @@ export default function DashboardPage() {
                 <Select value={timeRange === 'custom' ? '' : timeRange} onValueChange={(value) => {
                     if (value) {
                       setTimeRange(value);
-                      setDateRange(undefined);
+                      setStartDate(undefined);
+                      setEndDate(undefined);
                     }
                 }}>
                     <SelectTrigger className="w-[180px]">
@@ -249,54 +284,57 @@ export default function DashboardPage() {
                         <SelectItem value="90d">Last 90 days</SelectItem>
                     </SelectContent>
                 </Select>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            id="date"
-                            variant={"outline"}
-                            className={cn(
-                                "w-[260px] justify-start text-left font-normal",
-                                !dateRange && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange?.from ? (
-                                dateRange.to ? (
-                                    <>
-                                        {format(dateRange.from, "LLL dd, y")} -{" "}
-                                        {format(dateRange.to, "LLL dd, y")}
-                                    </>
-                                ) : (
-                                    format(dateRange.from, "LLL dd, y")
-                                )
-                            ) : (
-                                <span>Pick a date range</span>
-                            )}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={dateRange?.from}
-                            selected={dateRange}
-                            onSelect={(range) => {
-                                setDateRange(range)
-                                if (range?.from) {
-                                  setTimeRange('custom');
-                                }
-                            }}
-                            numberOfMonths={2}
-                        />
-                    </PopoverContent>
+                <Popover open={isCustomPopoverOpen} onOpenChange={setCustomPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline">Custom Range</Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4" align="end">
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="start-date">Start Date</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button id="start-date" variant={"outline"} className="w-[260px] justify-start text-left font-normal">
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {startDate ? format(startDate, "MM/dd/yyyy") : <span>mm/dd/yyyy</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                            </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="end-date">End Date</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button id="end-date" variant={"outline"} className="w-[260px] justify-start text-left font-normal">
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {endDate ? format(endDate, "MM/dd/yyyy") : <span>mm/dd/yyyy</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={{ before: startDate }} initialFocus />
+                            </PopoverContent>
+                        </Popover>
+                      </div>
+                      <Button onClick={handleApplyCustomRange}>Apply Custom Range</Button>
+                    </div>
+                  </PopoverContent>
                 </Popover>
             </div>
         </div>
 
         <Card>
-            <CardHeader><CardTitle>Live Statistics</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle>Live Statistics</CardTitle>
+              <div className="flex items-center space-x-2">
+                  <Switch id="realtime-switch" checked={realtime} onCheckedChange={setRealtime} />
+                  <Label htmlFor="realtime-switch">Real-time</Label>
+              </div>
+            </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 pt-4">
                     {Object.entries(liveStats).map(([status, count]) => {
                         const details = statusDetails[status];
                         const Icon = details?.icon;

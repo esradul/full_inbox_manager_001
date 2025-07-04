@@ -34,7 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { addDays, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import type { SupabaseRealtimePayload } from '@supabase/supabase-js';
+import type { SupabaseRealtimePayload, SupabaseClient } from '@supabase/supabase-js';
 
 type Status = 'Approval' | 'Objection' | 'Manual Handle' | 'Waiting' | 'Escalation' | 'Cancel' | 'Important' | 'Bookcall';
 type Record = {
@@ -42,7 +42,6 @@ type Record = {
   created_at: string;
   permission: Status | null;
   escalation: boolean;
-  cancel: boolean;
   important: boolean;
   bookcall: boolean;
 };
@@ -94,7 +93,7 @@ export default function DashboardPage() {
 
     let query = supabase
       .from(credentials.table)
-      .select('id, created_at, permission, escalation, cancel, important, bookcall');
+      .select('id, created_at, permission, escalation, important, bookcall');
 
     if (timeRange === 'custom' && startDate) {
         const from = startDate;
@@ -146,13 +145,13 @@ export default function DashboardPage() {
           .subscribe();
       }
     } else {
-      if (realtimeChannel.current) {
+      if (realtimeChannel.current && supabase) {
         supabase.removeChannel(realtimeChannel.current);
         realtimeChannel.current = null;
       }
     }
     return () => {
-      if (realtimeChannel.current) {
+      if (realtimeChannel.current && supabase) {
         supabase.removeChannel(realtimeChannel.current);
         realtimeChannel.current = null;
       }
@@ -173,8 +172,8 @@ export default function DashboardPage() {
   };
   
   const { liveStats, permissionChartData, overallChartData } = useMemo(() => {
-    const permissionCounts: Record<string, number> = { 'Approval': 0, 'Objection': 0, 'Manual Handle': 0 };
-    const overallCounts: Record<string, number> = { 'Escalation': 0, 'Cancel': 0, 'Important': 0, 'Bookcall': 0 };
+    const permissionCounts: Record<string, number> = { 'Approval': 0, 'Objection': 0, 'Manual Handle': 0, 'Cancel': 0 };
+    const overallCounts: Record<string, number> = { 'Escalation': 0, 'Important': 0, 'Bookcall': 0 };
     let waitingCount = 0;
 
     data.forEach(item => {
@@ -185,7 +184,6 @@ export default function DashboardPage() {
         waitingCount++;
       }
       if (item.escalation) overallCounts['Escalation']++;
-      if (item.cancel) overallCounts['Cancel']++;
       if (item.important) overallCounts['Important']++;
       if (item.bookcall) overallCounts['Bookcall']++;
     });
@@ -196,7 +194,7 @@ export default function DashboardPage() {
       Objection: permissionCounts['Objection'],
       'Manual Handle': permissionCounts['Manual Handle'],
       Escalation: overallCounts['Escalation'],
-      Cancel: overallCounts['Cancel'],
+      Cancel: permissionCounts['Cancel'],
       Important: overallCounts['Important'],
       Bookcall: overallCounts['Bookcall'],
       Waiting: waitingCount,
@@ -207,13 +205,13 @@ export default function DashboardPage() {
       Objection: stats.Objection,
       'Manual Handle': stats['Manual Handle'],
       Waiting: stats.Waiting,
+      Cancel: stats.Cancel,
     })
     .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
     .filter(item => item.value > 0);
 
     const oChartData = Object.entries({
       Escalation: stats.Escalation,
-      Cancel: stats.Cancel,
       Important: stats.Important,
       Bookcall: stats.Bookcall,
     })
@@ -405,3 +403,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

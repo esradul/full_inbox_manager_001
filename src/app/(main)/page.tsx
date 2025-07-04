@@ -78,7 +78,6 @@ export default function DashboardPage() {
     const { data: records, error } = await query;
     
     if (error) {
-      console.error("Error fetching data:", error);
       toast({
         variant: 'destructive',
         title: 'Failed to fetch data',

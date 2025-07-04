@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { useSupabase } from '@/contexts/supabase-context';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const responseSchema = z.object({
   reply: z.string().min(1, "Response cannot be empty."),
@@ -56,10 +57,26 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
         <CardTitle>Escalation Details</CardTitle>
       </CardHeader>
       <CardContent>
-        {renderField('Why I’m not able to do it', item.reasoning)}
         {renderField('Thread Context', item.Previous_Emails_Summary)}
+        {renderField('Why I’m not able to do it', item.reasoning)}
         {renderField('Current Customer Message', item.Customer_Email)}
-        {renderField('CRM Notes', item.CRM_notes)}
+        
+        {item.CRM_notes && (
+          <div className="mb-4">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="crm-notes" className="border-b-0">
+                <AccordionTrigger className="py-2 font-semibold text-sm text-muted-foreground hover:no-underline">
+                  <span className="flex-1 text-left">CRM Notes</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="p-3 rounded-md bg-muted/50 text-sm whitespace-pre-wrap">
+                    {item.CRM_notes}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="bg-muted/50 p-4 rounded-b-lg">
         <Form {...form}>

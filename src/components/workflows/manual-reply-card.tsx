@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { useSupabase } from '@/contexts/supabase-context';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const replySchema = z.object({
   reply: z.string().min(1, "Reply cannot be empty."),
@@ -58,19 +59,30 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
         <CardTitle>Manual Reply Details</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid md:grid-cols-2 gap-x-6">
-          <div>
-            {renderField('Required Feedback', item.feedback)}
-            {renderField('Thread Context', item.Previous_Emails_Summary)}
-            {renderField('Current Customer Message', item.Customer_Email)}
-            {renderField('CRM Notes', item.CRM_notes)}
+        {renderField('Thread Context', item.Previous_Emails_Summary)}
+        {renderField('Thought Process', item.reasoning)}
+        {renderField('Current Customer Message', item.Customer_Email)}
+
+        {item.CRM_notes && (
+          <div className="mb-4">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="crm-notes" className="border-b-0">
+                <AccordionTrigger className="py-2 font-semibold text-sm text-muted-foreground hover:no-underline">
+                  <span className="flex-1 text-left">CRM Notes</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="p-3 rounded-md bg-muted/50 text-sm whitespace-pre-wrap">
+                    {item.CRM_notes}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
-          <div>
-            {renderField('Thought Process', item.reasoning)}
-            {item.bookcall && renderField('Availabilities', item.Availabilities)}
-            {renderField('Original Draft Reply', item.draft_reply)}
-          </div>
-        </div>
+        )}
+        
+        {renderField('Required Feedback', item.feedback)}
+        {item.bookcall && renderField('Availabilities', item.Availabilities)}
+        {renderField('Original Draft Reply', item.draft_reply)}
       </CardContent>
       <CardFooter className="bg-muted/50 p-4 rounded-b-lg">
         <Form {...form}>

@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSupabase } from '@/contexts/supabase-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PieChart, Pie, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie } from 'recharts';
 import {
   ChartContainer,
   ChartTooltip,
@@ -27,9 +27,13 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { addDays } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { addDays, format } from 'date-fns';
+import { type DateRange } from "react-day-picker"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 type Status = 'Approval' | 'Objection' | 'Manual Handle' | 'Waiting' | 'Escalation' | 'Cancel' | 'Important' | 'Bookcall';
 type Record = {
@@ -71,6 +75,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [timeRange, setTimeRange] = useState('7d');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
   const fetchData = useCallback(async () => {
     if (!supabase || !credentials?.table) {
@@ -79,30 +84,28 @@ export default function DashboardPage() {
     }
     setIsLoading(true);
 
-    let fromDate;
-    const toDate = new Date();
-
-    switch (timeRange) {
-      case '24h':
-        fromDate = addDays(toDate, -1);
-        break;
-      case '7d':
-        fromDate = addDays(toDate, -7);
-        break;
-      case '30d':
-        fromDate = addDays(toDate, -30);
-        break;
-      case '90d':
-        fromDate = addDays(toDate, -90);
-        break;
-      default:
-        fromDate = addDays(toDate, -7);
-    }
-    
-    const query = supabase
+    let query = supabase
       .from(credentials.table)
-      .select('id, created_at, permission, escalation, cancel, important, bookcall')
-      .gte('created_at', fromDate.toISOString());
+      .select('id, created_at, permission, escalation, cancel, important, bookcall');
+
+    if (timeRange === 'custom' && dateRange?.from) {
+        const from = dateRange.from;
+        const to = dateRange.to ? dateRange.to : from;
+        const toEndOfDay = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
+  
+        query = query.gte('created_at', from.toISOString()).lte('created_at', toEndOfDay.toISOString());
+    } else if (timeRange !== 'custom') {
+        const toDate = new Date();
+        let fromDate;
+        switch (timeRange) {
+          case '24h': fromDate = addDays(toDate, -1); break;
+          case '7d': fromDate = addDays(toDate, -7); break;
+          case '30d': fromDate = addDays(toDate, -30); break;
+          case '90d': fromDate = addDays(toDate, -90); break;
+          default: fromDate = addDays(toDate, -7);
+        }
+        query = query.gte('created_at', fromDate.toISOString());
+    }
 
     const { data: records, error } = await query;
     
@@ -116,7 +119,7 @@ export default function DashboardPage() {
       setData(records as Record[]);
     }
     setIsLoading(false);
-  }, [supabase, credentials, timeRange, toast]);
+  }, [supabase, credentials, timeRange, dateRange, toast]);
   
   useEffect(() => {
     fetchData();
@@ -230,7 +233,12 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center gap-4">
             <h1 className="text-2xl font-semibold">Monitoring Dashboard</h1>
             <div className="ml-auto flex items-center gap-2">
-                <Select value={timeRange} onValueChange={setTimeRange}>
+                <Select value={timeRange === 'custom' ? '' : timeRange} onValueChange={(value) => {
+                    if (value) {
+                      setTimeRange(value);
+                      setDateRange(undefined);
+                    }
+                }}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select a time range" />
                     </SelectTrigger>
@@ -241,6 +249,47 @@ export default function DashboardPage() {
                         <SelectItem value="90d">Last 90 days</SelectItem>
                     </SelectContent>
                 </Select>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            id="date"
+                            variant={"outline"}
+                            className={cn(
+                                "w-[260px] justify-start text-left font-normal",
+                                !dateRange && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange?.from ? (
+                                dateRange.to ? (
+                                    <>
+                                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                                        {format(dateRange.to, "LLL dd, y")}
+                                    </>
+                                ) : (
+                                    format(dateRange.from, "LLL dd, y")
+                                )
+                            ) : (
+                                <span>Pick a date range</span>
+                            )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={dateRange?.from}
+                            selected={dateRange}
+                            onSelect={(range) => {
+                                setDateRange(range)
+                                if (range?.from) {
+                                  setTimeRange('custom');
+                                }
+                            }}
+                            numberOfMonths={2}
+                        />
+                    </PopoverContent>
+                </Popover>
             </div>
         </div>
 
@@ -318,5 +367,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

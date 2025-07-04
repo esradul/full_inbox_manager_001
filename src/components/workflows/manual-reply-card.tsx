@@ -59,6 +59,7 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
         <CardTitle>Manual Reply Details</CardTitle>
       </CardHeader>
       <CardContent>
+        {renderField('Required Feedback', item.feedback)}
         {renderField('Thread Context', item.Previous_Emails_Summary)}
         {renderField('Thought Process', item.reasoning)}
         {renderField('Current Customer Message', item.Customer_Email)}
@@ -80,7 +81,6 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
           </div>
         )}
         
-        {renderField('Required Feedback', item.feedback)}
         {item.bookcall && renderField('Availabilities', item.Availabilities)}
         {renderField('Original Draft Reply', item.draft_reply)}
       </CardContent>

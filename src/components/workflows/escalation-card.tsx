@@ -57,8 +57,8 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
         <CardTitle>Escalation Details</CardTitle>
       </CardHeader>
       <CardContent>
-        {renderField('Thread Context', item.Previous_Emails_Summary)}
         {renderField('Why I’m not able to do it', item.reasoning)}
+        {renderField('Thread Context', item.Previous_Emails_Summary)}
         {renderField('Current Customer Message', item.Customer_Email)}
         
         {item.CRM_notes && (

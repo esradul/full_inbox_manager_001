@@ -1,14 +1,25 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSupabase } from '@/contexts/supabase-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
+import { 
+  BarChart, 
+  Calendar as CalendarIcon, 
+  CheckCircle2, 
+  XCircle, 
+  MessageSquare, 
+  AlertTriangle, 
+  X, 
+  Star, 
+  Phone, 
+  Clock 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { Label } from '@/components/ui/label';
 import { addDays, format } from 'date-fns';
 import type { DateRange } from "react-day-picker";
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,34 +36,42 @@ type Record = {
   bookcall: boolean;
 };
 
-const permissionStatusColors = {
-  'Approval': 'hsl(var(--chart-1))',
-  'Objection': 'hsl(var(--destructive))',
-  'Manual Handle': 'hsl(var(--chart-2))',
+const statusDetails: Record<string, { icon: React.ElementType; color: string }> = {
+  Approval: { icon: CheckCircle2, color: 'text-chart-1' },
+  Objection: { icon: XCircle, color: 'text-destructive' },
+  'Manual Handle': { icon: MessageSquare, color: 'text-chart-2' },
+  Escalation: { icon: AlertTriangle, color: 'text-chart-3' },
+  Cancel: { icon: X, color: 'text-muted-foreground' },
+  Important: { icon: Star, color: 'text-chart-4' },
+  Bookcall: { icon: Phone, color: 'text-chart-5' },
+  Waiting: { icon: Clock, color: 'text-muted-foreground' },
 };
 
-const overallStatusColors = {
-  'Approval': 'hsl(var(--chart-1))',
-  'Objection': 'hsl(var(--destructive))',
-  'Manual Handle': 'hsl(var(--chart-2))',
-  'Escalation': 'hsl(var(--chart-3))',
-  'Cancel': 'hsl(var(--muted-foreground))',
-  'Important': 'hsl(var(--chart-4))',
-  'Bookcall': 'hsl(var(--chart-5))',
-};
 
 export default function DashboardPage() {
   const { supabase, credentials, isLoading: isSupabaseLoading } = useSupabase();
   const [data, setData] = useState<Record[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRealtime, setIsRealtime] = useState(true);
   const { toast } = useToast();
   
   const [date, setDate] = useState<DateRange | undefined>({
     from: addDays(new Date(), -7),
     to: new Date(),
   });
-  const [preset, setPreset] = useState<string>("7");
+  
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState<Date | undefined>(date?.from);
+  const [tempEndDate, setTempEndDate] = useState<Date | undefined>(date?.to);
+
+  useEffect(() => {
+    setTempStartDate(date?.from);
+    setTempEndDate(date?.to);
+  }, [date]);
+
+  const handleApplyDateRange = () => {
+    setDate({ from: tempStartDate, to: tempEndDate });
+    setPopoverOpen(false);
+  };
 
   const fetchData = useCallback(async () => {
     if (!supabase || !credentials?.table) {
@@ -94,7 +113,7 @@ export default function DashboardPage() {
   }, [fetchData]);
 
   useEffect(() => {
-    if (!supabase || !credentials?.table || !isRealtime) return;
+    if (!supabase || !credentials?.table) return;
 
     const channel = supabase.channel(`realtime-dashboard`)
       .on('postgres_changes', { event: '*', schema: 'public', table: credentials.table }, (payload) => {
@@ -105,17 +124,9 @@ export default function DashboardPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, credentials?.table, isRealtime, fetchData]);
-
-  const handlePresetChange = (value: string) => {
-    setPreset(value);
-    const now = new Date();
-    if (value === "custom") return;
-    const days = parseInt(value);
-    setDate({ from: addDays(now, -days), to: now });
-  };
+  }, [supabase, credentials?.table, fetchData]);
   
-  const { permissionStatusData, overallStatusData, liveStats } = useMemo(() => {
+  const { liveStats } = useMemo(() => {
     const permissionCounts: Record<string, number> = { 'Approval': 0, 'Objection': 0, 'Manual Handle': 0 };
     const overallCounts: Record<string, number> = { 'Escalation': 0, 'Cancel': 0, 'Important': 0, 'Bookcall': 0 };
     let waitingCount = 0;
@@ -133,9 +144,6 @@ export default function DashboardPage() {
       if (item.bookcall) overallCounts['Bookcall']++;
     });
 
-    const permissionChartData = Object.entries(permissionCounts).map(([name, value]) => ({ name, value })).filter(d => d.value > 0);
-    const overallChartData = [...permissionChartData, ...Object.entries(overallCounts).map(([name, value]) => ({ name, value })).filter(d => d.value > 0)];
-
     const stats = {
       Approval: permissionCounts['Approval'],
       Objection: permissionCounts['Objection'],
@@ -147,25 +155,19 @@ export default function DashboardPage() {
       Waiting: waitingCount,
     };
 
-    return { permissionStatusData: permissionChartData, overallStatusData: overallChartData, liveStats: stats };
+    return { liveStats: stats };
   }, [data]);
 
   const renderLoadingSkeleton = () => (
     <div className="space-y-4">
         <Card>
-            <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
-            <CardContent><div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div></CardContent>
+            <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+              </div>
+            </CardContent>
         </Card>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="lg:col-span-4">
-                 <CardHeader><Skeleton className="h-6 w-48" /></CardHeader>
-                 <CardContent className="h-[350px]"><Skeleton className="h-full w-full rounded-lg" /></CardContent>
-            </Card>
-            <Card className="lg:col-span-3">
-                 <CardHeader><Skeleton className="h-6 w-48" /></CardHeader>
-                 <CardContent className="h-[350px]"><Skeleton className="h-full w-full rounded-lg" /></CardContent>
-            </Card>
-        </div>
     </div>
   );
 
@@ -191,86 +193,70 @@ export default function DashboardPage() {
   }
   
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-8">
         <div className="flex flex-wrap items-center gap-4">
             <h1 className="text-2xl font-semibold">Monitoring Dashboard</h1>
             <div className="ml-auto flex items-center gap-2">
-                <Select value={preset} onValueChange={handlePresetChange}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select date range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="1">Last 24 hours</SelectItem>
-                        <SelectItem value="7">Last 7 days</SelectItem>
-                        <SelectItem value="30">Last 30 days</SelectItem>
-                        <SelectItem value="90">Last 90 days</SelectItem>
-                        <SelectItem value="custom">Custom Range</SelectItem>
-                    </SelectContent>
-                </Select>
-                 <Popover>
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                     <PopoverTrigger asChild>
-                        <Button variant={"outline"} className="w-[300px] justify-start text-left font-normal">
+                        <Button variant={"outline"}>
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date?.from ? ( date.to ? (<> {format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")} </>) : (format(date.from, "LLL dd, y"))) : (<span>Pick a date</span>)}
+                            <span>Custom Range</span>
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={(range) => { setDate(range); setPreset("custom"); }} numberOfMonths={2}/>
+                    <PopoverContent className="w-auto p-4 space-y-3" align="end">
+                        <div className="space-y-1">
+                            <Label>Start Date</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant={"outline"} className="w-[240px] justify-start text-left font-normal">
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {tempStartDate ? format(tempStartDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar mode="single" selected={tempStartDate} onSelect={setTempStartDate} initialFocus />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-1">
+                            <Label>End Date</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant={"outline"} className="w-[240px] justify-start text-left font-normal">
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {tempEndDate ? format(tempEndDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar mode="single" selected={tempEndDate} onSelect={setTempEndDate} />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <Button onClick={handleApplyDateRange} className="w-full">Apply Custom Range</Button>
                     </PopoverContent>
                 </Popover>
-                 <Button variant={isRealtime ? "default" : "outline"} size="icon" onClick={() => setIsRealtime(!isRealtime)} title={isRealtime ? "Disable real-time updates" : "Enable real-time updates"}>
-                    <RefreshCw className={`h-4 w-4 ${isRealtime ? 'animate-spin' : ''}`} />
-                </Button>
             </div>
         </div>
 
         <Card>
-            <CardHeader><CardTitle>Live Status</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Live Statistics</CardTitle></CardHeader>
             <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4 text-center">
-                    {Object.entries(liveStats).map(([status, count]) => (
-                        <div key={status} className="flex flex-col p-2 rounded-lg bg-background">
-                            <span className="text-3xl font-bold">{isLoading ? <Skeleton className="h-8 w-10 mx-auto" /> : count}</span>
-                            <span className="text-sm text-muted-foreground mt-1">{status}</span>
-                        </div>
-                    ))}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {Object.entries(liveStats).map(([status, count]) => {
+                        const details = statusDetails[status];
+                        const Icon = details?.icon;
+                        return (
+                            <div key={status} className="border rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-center bg-card shadow-sm">
+                                {Icon && <Icon className={`h-8 w-8 ${details.color}`} />}
+                                <span className="text-3xl font-bold">{isLoading ? <Skeleton className="h-8 w-10 mx-auto" /> : count}</span>
+                                <span className="text-sm text-muted-foreground mt-1">{status}</span>
+                            </div>
+                        )
+                    })}
                 </div>
             </CardContent>
         </Card>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="lg:col-span-4">
-                <CardHeader><CardTitle>Permission Status</CardTitle></CardHeader>
-                <CardContent className="h-[350px]">
-                    {isLoading ? <Skeleton className="h-full w-full rounded-lg" /> : 
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie data={permissionStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => { const radius = innerRadius + (outerRadius - innerRadius) * 0.5; const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180)); const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180)); return ( <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central"> {`${(percent * 100).toFixed(0)}%`} </text> ); }}>
-                                {permissionStatusData.map((entry, index) => ( <Cell key={`cell-${index}`} fill={permissionStatusColors[entry.name as keyof typeof permissionStatusColors]} /> ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>}
-                </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-3">
-                <CardHeader><CardTitle>Overall Status</CardTitle></CardHeader>
-                <CardContent className="h-[350px]">
-                     {isLoading ? <Skeleton className="h-full w-full rounded-lg" /> : 
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie data={overallStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => { const radius = innerRadius + (outerRadius - innerRadius) * 0.5; const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180)); const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180)); return ( <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central"> {`${(percent * 100).toFixed(0)}%`} </text> ); }}>
-                                {overallStatusData.map((entry, index) => ( <Cell key={`cell-${index}`} fill={overallStatusColors[entry.name as keyof typeof overallStatusColors]} /> ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>}
-                </CardContent>
-            </Card>
-        </div>
     </div>
   );
 }

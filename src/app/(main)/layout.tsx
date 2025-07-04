@@ -48,7 +48,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex flex-col gap-4 px-4 py-6">
           <Link href="/" className="flex items-center gap-2 font-semibold text-primary">
             <Shield size={24} />
-            <span className="text-xl">SendVision</span>
+            <span className="text-xl">Neswave</span>
           </Link>
           {navItems.map((item) => (
             <Link
@@ -78,7 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <nav className="grid gap-6 text-lg font-medium">
                 <Link href="/" className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base">
                    <Shield className="h-5 w-5 transition-all group-hover:scale-110" />
-                   <span className="sr-only">SendVision</span>
+                   <span className="sr-only">Neswave</span>
                 </Link>
                 {navItems.map((item) => (
                   <Link

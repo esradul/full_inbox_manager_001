@@ -186,6 +186,7 @@ export default function DashboardPage() {
       if (item.escalation) overallCounts['Escalation']++;
       if (item.important) overallCounts['Important']++;
       if (item.bookcall) overallCounts['Bookcall']++;
+      if (item.permission === 'Cancel') permissionCounts['Cancel']++;
     });
 
     const stats = {
@@ -248,7 +249,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center h-[80vh]">
           <Card className="w-full max-w-md text-center p-6">
               <CardHeader>
-                  <CardTitle className="text-2xl">Welcome to SendVision</CardTitle>
+                  <CardTitle className="text-2xl">Welcome to Neswave</CardTitle>
               </CardHeader>
               <CardContent>
                   <p className="mb-4">Please configure your Supabase connection to get started.</p>

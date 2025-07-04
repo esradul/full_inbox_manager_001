@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Providers } from '@/components/providers';
 
 export const metadata: Metadata = {
-  title: 'SendVision',
+  title: 'Neswave',
   description: 'Real-time content moderation application',
 };
 

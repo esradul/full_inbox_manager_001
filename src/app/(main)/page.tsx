@@ -37,7 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import type { SupabaseRealtimePayload, SupabaseClient } from '@supabase/supabase-js';
 
-type Status = 'Approval' | 'Objection' | 'Manual Handle' | 'Waiting' | 'Escalation' | 'Cancel' | 'Important' | 'Bookcall' | 'Replied';
+type Status = 'Approval' | 'Objection' | 'Manual Handle' | 'Waiting' | 'Escalation' | 'Cancel' | 'Important' | 'Bookcall';
 type Record = {
   id: string;
   created_at: string;
@@ -46,6 +46,7 @@ type Record = {
   important: boolean;
   bookcall: boolean;
   message_sent: boolean;
+  replied: boolean;
 };
 
 const statusDetails: Record<string, { icon: React.ElementType; color: string }> = {
@@ -97,7 +98,7 @@ export default function DashboardPage() {
 
     let query = supabase
       .from(credentials.table)
-      .select('id, created_at, permission, escalation, important, bookcall, message_sent');
+      .select('id, created_at, permission, escalation, important, bookcall, message_sent, replied');
 
     if (timeRange === 'custom' && startDate) {
         const from = startDate;
@@ -191,12 +192,15 @@ export default function DashboardPage() {
     };
 
     data.forEach(item => {
-      if(item.message_sent) stats['Message Sent']++;
+      if (item.message_sent) stats['Message Sent']++;
+      if (item.replied) stats.Replied++;
 
       // Count permission status
       if (item.permission && stats.hasOwnProperty(item.permission)) {
         const key = item.permission as keyof typeof stats;
-        (stats[key] as number)++;
+        if (key !== 'Replied') {
+          (stats[key] as number)++;
+        }
       } else if (item.permission === null) {
         stats.Waiting++;
       }

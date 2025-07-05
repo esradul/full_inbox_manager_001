@@ -53,6 +53,8 @@ export function SendGuardCard({ item, onAction }: { item: any, onAction: () => v
     
     if (values.action === 'Objection') {
       updateData.edited = (item.edited || 0) + 1;
+      // Reset permission to 'Waiting' to re-queue the item for another AI edit cycle
+      updateData.permission = 'Waiting'; 
     }
 
     const { error } = await supabase.from(credentials.table).update(updateData).eq('id', item.id);

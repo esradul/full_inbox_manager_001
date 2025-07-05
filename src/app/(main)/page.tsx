@@ -177,7 +177,7 @@ export default function DashboardPage() {
   };
   
   const { liveStats, permissionChartData, overallChartData } = useMemo(() => {
-    const stats = {
+    const stats: Record<Status | 'Total' | 'Replied' | 'Message Sent', number> = {
       Total: data.length,
       'Message Sent': 0,
       Approval: 0,
@@ -194,18 +194,14 @@ export default function DashboardPage() {
     data.forEach(item => {
       if (item.message_sent) stats['Message Sent']++;
       if (item.replied) stats.Replied++;
-
-      // Count permission status
-      if (item.permission && stats.hasOwnProperty(item.permission)) {
-        const key = item.permission as keyof typeof stats;
-        if (key !== 'Replied') {
-          (stats[key] as number)++;
-        }
-      } else if (item.permission === null) {
+      
+      if (item.permission === null || item.permission === 'Waiting') {
         stats.Waiting++;
+      } else if (item.permission && stats.hasOwnProperty(item.permission)) {
+        const key = item.permission as keyof typeof stats;
+        (stats[key] as number)++;
       }
       
-      // Count boolean flags
       if (item.escalation) stats.Escalation++;
       if (item.important) stats.Important++;
       if (item.bookcall) stats.Bookcall++;
@@ -215,6 +211,8 @@ export default function DashboardPage() {
       Approval: stats.Approval,
       Objection: stats.Objection,
       'Manual Handle': stats['Manual Handle'],
+      Waiting: stats.Waiting,
+      Cancel: stats.Cancel,
     })
     .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
     .filter(item => item.value > 0);

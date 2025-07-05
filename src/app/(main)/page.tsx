@@ -211,8 +211,6 @@ export default function DashboardPage() {
       Approval: stats.Approval,
       Objection: stats.Objection,
       'Manual Handle': stats['Manual Handle'],
-      Waiting: stats.Waiting,
-      Cancel: stats.Cancel,
     })
     .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
     .filter(item => item.value > 0);
@@ -254,7 +252,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center h-[80vh]">
           <Card className="w-full max-w-md text-center p-6">
               <CardHeader>
-                  <CardTitle className="text-2xl">Welcome to Neswave</CardTitle>
+                  <CardTitle className="text-2xl">Neswave</CardTitle>
               </CardHeader>
               <CardContent>
                   <p className="mb-4">Please configure your Supabase connection to get started.</p>

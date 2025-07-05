@@ -23,7 +23,8 @@ import {
   X, 
   Star, 
   Phone, 
-  Clock 
+  Clock,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -44,10 +45,12 @@ type Record = {
   escalation: boolean;
   important: boolean;
   bookcall: boolean;
+  message_sent: boolean;
 };
 
 const statusDetails: Record<string, { icon: React.ElementType; color: string }> = {
   Total: { icon: Database, color: 'text-primary' },
+  'Message Sent': { icon: Send, color: 'text-chart-3' },
   Approval: { icon: CheckCircle2, color: 'text-chart-1' },
   Objection: { icon: XCircle, color: 'text-destructive' },
   'Manual Handle': { icon: MessageSquare, color: 'text-chart-2' },
@@ -93,7 +96,7 @@ export default function DashboardPage() {
 
     let query = supabase
       .from(credentials.table)
-      .select('id, created_at, permission, escalation, important, bookcall');
+      .select('id, created_at, permission, escalation, important, bookcall, message_sent');
 
     if (timeRange === 'custom' && startDate) {
         const from = startDate;
@@ -174,24 +177,28 @@ export default function DashboardPage() {
   const { liveStats, permissionChartData, overallChartData } = useMemo(() => {
     const stats = {
       Total: data.length,
+      'Message Sent': 0,
       Approval: 0,
       Objection: 0,
       'Manual Handle': 0,
       Waiting: 0,
       Escalation: 0,
-      Cancel: 0,
       Important: 0,
       Bookcall: 0,
+      Cancel: 0,
     };
 
     data.forEach(item => {
-      // Count permission status
-      const permissionStatus = item.permission === null ? 'Waiting' : item.permission;
-      if (permissionStatus && stats.hasOwnProperty(permissionStatus)) {
-          const key = permissionStatus as keyof typeof stats;
-          (stats[key] as number)++;
-      }
+      if(item.message_sent) stats['Message Sent']++;
 
+      // Count permission status
+      if (item.permission && stats.hasOwnProperty(item.permission)) {
+        const key = item.permission as keyof typeof stats;
+        (stats[key] as number)++;
+      } else if (item.permission === null) {
+        stats.Waiting++;
+      }
+      
       // Count boolean flags
       if (item.escalation) stats.Escalation++;
       if (item.important) stats.Important++;
@@ -223,7 +230,7 @@ export default function DashboardPage() {
             <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+                {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
               </div>
             </CardContent>
         </Card>

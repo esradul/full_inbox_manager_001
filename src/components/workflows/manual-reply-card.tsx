@@ -133,7 +133,7 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
                 )}
               />
               <div className="flex gap-2 self-end">
-                <Button type="submit" disabled={isSubmitting}>Submit Reply</Button>
+                <Button type="submit" disabled={isSubmitting}>Submit Response</Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button type="button" variant="destructive" disabled={isSubmitting}>Remove</Button>

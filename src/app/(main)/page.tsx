@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -79,7 +78,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  const [timeRange, setTimeRange] = useState('7d');
+  const [timeRange, setTimeRange] = useState('24h');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [isCustomPopoverOpen, setCustomPopoverOpen] = useState(false);

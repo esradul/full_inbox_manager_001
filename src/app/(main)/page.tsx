@@ -172,41 +172,36 @@ export default function DashboardPage() {
   };
   
   const { liveStats, permissionChartData, overallChartData } = useMemo(() => {
-    const permissionCounts: Record<string, number> = { 'Approval': 0, 'Objection': 0, 'Manual Handle': 0, 'Cancel': 0 };
-    const overallCounts: Record<string, number> = { 'Escalation': 0, 'Important': 0, 'Bookcall': 0 };
-    let waitingCount = 0;
-
-    data.forEach(item => {
-      if (item.permission && permissionCounts.hasOwnProperty(item.permission)) {
-        permissionCounts[item.permission]++;
-      }
-      if (item.permission === 'Waiting' || item.permission === null) {
-        waitingCount++;
-      }
-      if (item.escalation) overallCounts['Escalation']++;
-      if (item.important) overallCounts['Important']++;
-      if (item.bookcall) overallCounts['Bookcall']++;
-      if (item.permission === 'Cancel') permissionCounts['Cancel']++;
-    });
-
     const stats = {
       Total: data.length,
-      Approval: permissionCounts['Approval'],
-      Objection: permissionCounts['Objection'],
-      'Manual Handle': permissionCounts['Manual Handle'],
-      Escalation: overallCounts['Escalation'],
-      Cancel: permissionCounts['Cancel'],
-      Important: overallCounts['Important'],
-      Bookcall: overallCounts['Bookcall'],
-      Waiting: waitingCount,
+      Approval: 0,
+      Objection: 0,
+      'Manual Handle': 0,
+      Waiting: 0,
+      Escalation: 0,
+      Cancel: 0,
+      Important: 0,
+      Bookcall: 0,
     };
+
+    data.forEach(item => {
+      // Count permission status
+      const permissionStatus = item.permission === null ? 'Waiting' : item.permission;
+      if (permissionStatus && stats.hasOwnProperty(permissionStatus)) {
+          const key = permissionStatus as keyof typeof stats;
+          (stats[key] as number)++;
+      }
+
+      // Count boolean flags
+      if (item.escalation) stats.Escalation++;
+      if (item.important) stats.Important++;
+      if (item.bookcall) stats.Bookcall++;
+    });
     
     const pChartData = Object.entries({
       Approval: stats.Approval,
       Objection: stats.Objection,
       'Manual Handle': stats['Manual Handle'],
-      Waiting: stats.Waiting,
-      Cancel: stats.Cancel,
     })
     .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
     .filter(item => item.value > 0);
@@ -218,7 +213,6 @@ export default function DashboardPage() {
     })
     .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
     .filter(item => item.value > 0);
-
 
     return { liveStats: stats, permissionChartData: pChartData, overallChartData: oChartData };
   }, [data]);
@@ -404,5 +398,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

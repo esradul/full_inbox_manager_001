@@ -45,7 +45,7 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
 
     const { error } = await supabase
       .from(credentials.table)
-      .update({ human_reply: values.reply, human_name: values.name, replied: true, permission: 'Approval' })
+      .update({ human_reply: values.reply, human_name: values.name, replied: true })
       .eq('id', item.id);
 
     if (error) {

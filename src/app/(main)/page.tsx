@@ -23,7 +23,8 @@ import {
   Star, 
   Phone, 
   Clock,
-  Send
+  Send,
+  MessageSquareReply,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,7 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import type { SupabaseRealtimePayload, SupabaseClient } from '@supabase/supabase-js';
 
-type Status = 'Approval' | 'Objection' | 'Manual Handle' | 'Waiting' | 'Escalation' | 'Cancel' | 'Important' | 'Bookcall';
+type Status = 'Approval' | 'Objection' | 'Manual Handle' | 'Waiting' | 'Escalation' | 'Cancel' | 'Important' | 'Bookcall' | 'Replied';
 type Record = {
   id: string;
   created_at: string;
@@ -53,6 +54,7 @@ const statusDetails: Record<string, { icon: React.ElementType; color: string }> 
   Approval: { icon: CheckCircle2, color: 'text-chart-1' },
   Objection: { icon: XCircle, color: 'text-destructive' },
   'Manual Handle': { icon: MessageSquare, color: 'text-chart-2' },
+  Replied: { icon: MessageSquareReply, color: 'text-chart-1' },
   Escalation: { icon: AlertTriangle, color: 'text-chart-3' },
   Cancel: { icon: X, color: 'text-muted-foreground' },
   Important: { icon: Star, color: 'text-chart-4' },
@@ -111,7 +113,7 @@ export default function DashboardPage() {
           case '7d': fromDate = addDays(toDate, -7); break;
           case '30d': fromDate = addDays(toDate, -30); break;
           case '90d': fromDate = addDays(toDate, -90); break;
-          default: fromDate = addDays(toDate, -7);
+          default: fromDate = addDays(toDate, -1);
         }
         query = query.gte('created_at', fromDate.toISOString());
     }
@@ -185,6 +187,7 @@ export default function DashboardPage() {
       Important: 0,
       Bookcall: 0,
       Cancel: 0,
+      Replied: 0,
     };
 
     data.forEach(item => {
@@ -229,7 +232,7 @@ export default function DashboardPage() {
             <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+                {Array.from({ length: 11 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
               </div>
             </CardContent>
         </Card>
@@ -333,10 +336,11 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 pt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 pt-4">
                     {Object.entries(liveStats).map(([status, count]) => {
                         const details = statusDetails[status];
                         const Icon = details?.icon;
+                        if (!Icon) return null; // Don't render if no icon details
                         return (
                             <div key={status} className="border rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-center bg-card shadow-sm">
                                 {Icon && <Icon className={`h-8 w-8 ${details.color}`} />}

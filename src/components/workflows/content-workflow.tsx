@@ -8,7 +8,7 @@ import { Terminal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ContentWorkflowProps<T> {
-  filter: Record<string, any>;
+  filter: Record<string, any> | string;
   renderItem: (item: T, refresh: () => void) => React.ReactNode;
   noItemsMessage: string;
 }
@@ -28,13 +28,18 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
 
     let query = supabase.from(credentials.table).select('*').order('created_at', { ascending: true });
 
-    Object.entries(filter).forEach(([key, value]) => {
-      if (value === null) {
-        query = query.is(key, value);
-      } else {
-        query = query.eq(key, value);
-      }
-    });
+    if (typeof filter === 'string') {
+      query = query.or(filter);
+    } else {
+      Object.entries(filter).forEach(([key, value]) => {
+        if (value === null) {
+          query = query.is(key, value);
+        } else {
+          query = query.eq(key, value);
+        }
+      });
+    }
+
 
     const { data, error } = await query;
     if (error) {
@@ -57,7 +62,7 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
     if (!supabase || !credentials?.table) return;
 
     const channel = supabase
-      .channel(`workflow-channel-${Object.values(filter).join('-')}`)
+      .channel(`workflow-channel-${JSON.stringify(filter)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: credentials.table },
@@ -70,7 +75,7 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, credentials, fetchData]);
+  }, [supabase, credentials, filter, fetchData]);
 
   if (isLoading) {
     return (

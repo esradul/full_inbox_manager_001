@@ -8,7 +8,7 @@ export default function ManualReplyPage() {
     <div>
       <h1 className="text-2xl font-semibold mb-4">Manual Reply</h1>
       <ContentWorkflow
-        filter={{ permission: 'Manual Handle', replied: false }}
+        filter={{ permission: 'Manual Handle', replied: false, removed: false }}
         noItemsMessage="No items are awaiting manual reply."
         renderItem={(item: any, refresh) => <ManualReplyCard item={item} onAction={refresh} />}
       />

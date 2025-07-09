@@ -8,7 +8,7 @@ export default function ImportantPage() {
     <div>
       <h1 className="text-2xl font-semibold mb-4">Important</h1>
       <ContentWorkflow
-        filter={{ important: true, Important_replied: false }}
+        filter={{ important: true, Important_replied: false, removed: false }}
         noItemsMessage="There are no important items."
         renderItem={(item: any, refresh) => <ImportantCard item={item} onAction={refresh} />}
       />

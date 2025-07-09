@@ -58,7 +58,7 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
   const handleRemove = async () => {
     if (!supabase || !credentials?.table) return;
     setIsSubmitting(true);
-    const { error } = await supabase.from(credentials.table).delete().eq('id', item.id);
+    const { error } = await supabase.from(credentials.table).update({ removed: true }).eq('id', item.id);
     if (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to remove item.' });
     } else {
@@ -126,7 +126,7 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete this item.
+                      This action cannot be undone. This will remove the item from all queues.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -135,7 +135,7 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
                       onClick={handleRemove} 
                       className={buttonVariants({ variant: "destructive" })}
                     >
-                      Delete
+                      Confirm Remove
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

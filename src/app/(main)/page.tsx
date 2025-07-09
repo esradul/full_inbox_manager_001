@@ -47,6 +47,7 @@ type Record = {
   bookcall: boolean;
   message_sent: boolean;
   replied: boolean;
+  removed: boolean;
 };
 
 const statusDetails: Record<string, { icon: React.ElementType; color: string }> = {
@@ -98,7 +99,8 @@ export default function DashboardPage() {
 
     let query = supabase
       .from(credentials.table)
-      .select('id, created_at, permission, escalation, important, bookcall, message_sent, replied');
+      .select('id, created_at, permission, escalation, important, bookcall, message_sent, replied, removed')
+      .or('removed.is.null,removed.eq.false');
 
     if (timeRange === 'custom' && startDate) {
         const from = startDate;
@@ -211,6 +213,8 @@ export default function DashboardPage() {
       Approval: stats.Approval,
       Objection: stats.Objection,
       'Manual Handle': stats['Manual Handle'],
+      Waiting: stats.Waiting,
+      Cancel: stats.Cancel,
     })
     .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
     .filter(item => item.value > 0);

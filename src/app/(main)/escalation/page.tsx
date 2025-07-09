@@ -8,7 +8,7 @@ export default function EscalationPage() {
     <div>
       <h1 className="text-2xl font-semibold mb-4">Escalation</h1>
       <ContentWorkflow
-        filter={{ escalation: true }}
+        filter={{ escalation: true, Escalated_replied: false }}
         noItemsMessage="There are no escalated items."
         renderItem={(item: any, refresh) => <EscalationCard item={item} onAction={refresh} />}
       />

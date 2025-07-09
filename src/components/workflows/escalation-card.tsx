@@ -43,7 +43,7 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
 
     const { error } = await supabase
       .from(credentials.table)
-      .update({ Escalated_reply: values.reply, escalation: false }) // Mark as handled
+      .update({ Escalated_reply: values.reply, Escalated_replied: true })
       .eq('id', item.id);
 
     if (error) {
@@ -81,9 +81,9 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
         <CardTitle>Escalation Details</CardTitle>
       </CardHeader>
       <CardContent>
+        {renderField('Subject', item.email_subject)}
         {renderField('Why I’m not able to do it', item.reasoning)}
         {renderField('Thread Context', item.Previous_Emails_Summary)}
-        {renderField('Subject', item.email_subject)}
         {renderField('Current Customer Message', item.Customer_Email)}
         
         {item.CRM_notes && (

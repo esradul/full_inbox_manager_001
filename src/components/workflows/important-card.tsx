@@ -44,7 +44,7 @@ export function ImportantCard({ item, onAction }: { item: any, onAction: () => v
 
     const { error } = await supabase
       .from(credentials.table)
-      .update({ Important_reply: values.reply, important: false }) // Mark as handled
+      .update({ Important_reply: values.reply, Important_replied: true })
       .eq('id', item.id);
 
     if (error) {
@@ -82,9 +82,9 @@ export function ImportantCard({ item, onAction }: { item: any, onAction: () => v
         <CardTitle>Important Item Details</CardTitle>
       </CardHeader>
       <CardContent>
+        {renderField('Subject', item.email_subject)}
         {renderField('Thread Context', item.Previous_Emails_Summary)}
         {renderField('Thought Process', item.reasoning)}
-        {renderField('Subject', item.email_subject)}
         {renderField('Current Customer Message', item.Customer_Email)}
         
         {item.CRM_notes && (

@@ -6,14 +6,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { addDays } from 'date-fns';
 
 interface ContentWorkflowProps<T> {
   filter: Record<string, any> | string;
   renderItem: (item: T, refresh: () => void) => React.ReactNode;
   noItemsMessage: string;
+  timeRange?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
-export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ filter, renderItem, noItemsMessage }: ContentWorkflowProps<T>) {
+export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ filter, renderItem, noItemsMessage, timeRange, startDate, endDate }: ContentWorkflowProps<T>) {
   const { supabase, credentials } = useSupabase();
   const [items, setItems] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +30,7 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
     }
     setIsLoading(true);
 
-    let query = supabase.from(credentials.table).select('*').order('created_at', { ascending: true });
+    let query = supabase.from(credentials.table).select('*').order('created_at', { ascending: false });
 
     if (typeof filter === 'string') {
       query = query.or(filter);
@@ -38,6 +42,27 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
           query = query.eq(key, value);
         }
       });
+    }
+
+    if (timeRange) {
+        if (timeRange === 'custom' && startDate) {
+            const from = startDate;
+            const to = endDate ? endDate : from;
+            const toEndOfDay = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
+      
+            query = query.gte('created_at', from.toISOString()).lte('created_at', toEndOfDay.toISOString());
+        } else if (timeRange !== 'custom') {
+            const toDate = new Date();
+            let fromDate;
+            switch (timeRange) {
+              case '24h': fromDate = addDays(toDate, -1); break;
+              case '7d': fromDate = addDays(toDate, -7); break;
+              case '30d': fromDate = addDays(toDate, -30); break;
+              case '90d': fromDate = addDays(toDate, -90); break;
+              default: fromDate = addDays(toDate, -7);
+            }
+            query = query.gte('created_at', fromDate.toISOString());
+        }
     }
 
 
@@ -52,7 +77,7 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
       setItems(data as T[]);
     }
     setIsLoading(false);
-  }, [supabase, credentials, filter, toast]);
+  }, [supabase, credentials, filter, toast, timeRange, startDate, endDate]);
   
   useEffect(() => {
     fetchData();
@@ -80,8 +105,9 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
@@ -100,7 +126,7 @@ export function ContentWorkflow<T extends { id: any;[key: string]: any; }>({ fil
     return (
       <Alert>
         <Terminal className="h-4 w-4" />
-        <AlertTitle>Queue Clear!</AlertTitle>
+        <AlertTitle>Queue Empty</AlertTitle>
         <AlertDescription>{noItemsMessage}</AlertDescription>
       </Alert>
     );

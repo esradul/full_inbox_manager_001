@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   Shield,
+  Trash2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -114,6 +115,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configuration</span>
               </DropdownMenuItem>
+              <Link href="/recovery">
+                <DropdownMenuItem>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Data Recovery</span>
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={disconnect} disabled={!credentials}>
                 <LogOut className="mr-2 h-4 w-4" />

@@ -213,8 +213,6 @@ export default function DashboardPage() {
       Approval: stats.Approval,
       Objection: stats.Objection,
       'Manual Handle': stats['Manual Handle'],
-      Waiting: stats.Waiting,
-      Cancel: stats.Cancel,
     })
     .map(([name, value]) => ({ name, value, fill: chartConfig[name as keyof typeof chartConfig]?.color }))
     .filter(item => item.value > 0);

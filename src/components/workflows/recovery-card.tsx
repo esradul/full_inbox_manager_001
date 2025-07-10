@@ -83,9 +83,6 @@ export function RecoveryCard({ item, onAction }: { item: any, onAction: () => vo
         {renderField('Draft Reply', item.draft_reply)}
       </CardContent>
       <CardFooter className="flex justify-end gap-2">
-        <Button variant="outline" onClick={handleRestore} disabled={isSubmitting}>
-          Restore
-        </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" disabled={isSubmitting}>Delete Permanently</Button>
@@ -108,6 +105,9 @@ export function RecoveryCard({ item, onAction }: { item: any, onAction: () => vo
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        <Button variant="outline" onClick={handleRestore} disabled={isSubmitting}>
+          Restore
+        </Button>
       </CardFooter>
     </Card>
   );

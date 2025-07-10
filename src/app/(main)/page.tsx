@@ -197,9 +197,7 @@ export default function DashboardPage() {
       if (item.message_sent) stats['Message Sent']++;
       if (item.replied) stats.Replied++;
       
-      if (item.permission === null || item.permission === 'Waiting') {
-        stats.Waiting++;
-      } else if (item.permission && stats.hasOwnProperty(item.permission)) {
+      if (item.permission && stats.hasOwnProperty(item.permission)) {
         const key = item.permission as keyof typeof stats;
         (stats[key] as number)++;
       }

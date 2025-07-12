@@ -99,7 +99,7 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
                 <AccordionContent>
                   <div className="space-y-4 pt-2">
                     {renderField('Draft Reply', item.draft_reply)}
-                    {renderField('Thought Process', item.reasoning)}
+                    {renderField('Thought Process', item.thought_process)}
                     {renderField('CRM Notes', item.CRM_notes)}
                   </div>
                 </AccordionContent>

@@ -107,7 +107,6 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
         )}
         
         {item.bookcall && renderField('Availabilities', item.Availabilities)}
-        {renderField('Original Draft Reply', item.draft_reply)}
       </CardContent>
       <CardFooter className="bg-muted/50 p-4 rounded-b-lg">
         <Form {...form}>

@@ -82,9 +82,9 @@ export function EscalationCard({ item, onAction }: { item: any, onAction: () => 
       </CardHeader>
       <CardContent>
         {renderField('Subject', item.email_subject)}
-        {renderField('Why I’m not able to do it', item.reasoning)}
-        {renderField('Thread Context', item.Previous_Emails_Summary)}
         {renderField('Current Customer Message', item.Customer_Email)}
+        {renderField('Thread Context', item.Previous_Emails_Summary)}
+        {renderField('Why I’m not able to do it', item.reasoning)}
         
         {item.CRM_notes && (
           <div className="mb-4">

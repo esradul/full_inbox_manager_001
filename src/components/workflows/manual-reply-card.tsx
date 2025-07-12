@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from 'react-hook-form';
@@ -83,30 +84,28 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
         <CardTitle>Manual Reply Details</CardTitle>
       </CardHeader>
       <CardContent>
-        {renderField('Subject', item.email_subject)}
         {renderField('Feedback from previous Objection', item.feedback)}
-        {renderField('Thread Context', item.Previous_Emails_Summary)}
-        {renderField('Thought Process', item.reasoning)}
+        {renderField('Subject', item.email_subject)}
         {renderField('Current Customer Message', item.Customer_Email)}
+        {renderField('Thread Context', item.Previous_Emails_Summary)}
+        {item.bookcall && renderField('Availabilities', item.Availabilities)}
 
-        {item.CRM_notes && (
-          <div className="mb-4">
+        <div className="mb-4">
             <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="crm-notes" className="border-b-0">
+              <AccordionItem value="additional-context" className="border-b-0">
                 <AccordionTrigger className="py-2 font-semibold text-sm text-muted-foreground hover:no-underline">
-                  <span className="flex-1 text-left">CRM Notes</span>
+                  <span className="flex-1 text-left">Additional Context</span>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <div className="p-3 rounded-md bg-muted/50 text-sm whitespace-pre-wrap">
-                    {item.CRM_notes}
+                  <div className="space-y-4 pt-2">
+                    {renderField('Draft Reply', item.draft_reply)}
+                    {renderField('Thought Process', item.reasoning)}
+                    {renderField('CRM Notes', item.CRM_notes)}
                   </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
           </div>
-        )}
-        
-        {item.bookcall && renderField('Availabilities', item.Availabilities)}
       </CardContent>
       <CardFooter className="bg-muted/50 p-4 rounded-b-lg">
         <Form {...form}>

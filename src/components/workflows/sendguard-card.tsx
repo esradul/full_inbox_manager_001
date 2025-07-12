@@ -95,6 +95,7 @@ export function SendGuardCard({ item, onAction }: { item: any, onAction: () => v
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {renderField('Feedback from previous Objection', item.feedback)}
         {renderField('Thread Context', item.Previous_Emails_Summary)}
         {renderField('Thought Process', item.reasoning)}
         {renderField('Subject', item.email_subject)}

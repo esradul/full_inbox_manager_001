@@ -96,11 +96,13 @@ export function SendGuardCard({ item, onAction }: { item: any, onAction: () => v
       </CardHeader>
       <CardContent>
         {renderField('Feedback from previous Objection', item.feedback)}
-        {renderField('Thread Context', item.Previous_Emails_Summary)}
-        {renderField('Thought Process', item.reasoning)}
         {renderField('Subject', item.email_subject)}
         {renderField('Current Customer Message', item.Customer_Email)}
-        
+        {renderField('Thread Context', item.Previous_Emails_Summary)}
+        {renderField('Draft Reply', item.draft_reply)}
+        {item.bookcall && renderField('Availabilities', item.Availabilities)}
+        {renderField('Thought Process', item.reasoning)}
+
         {item.CRM_notes && (
           <div className="mb-4">
             <Accordion type="single" collapsible className="w-full">
@@ -117,9 +119,6 @@ export function SendGuardCard({ item, onAction }: { item: any, onAction: () => v
             </Accordion>
           </div>
         )}
-        
-        {item.bookcall && renderField('Availabilities', item.Availabilities)}
-        {renderField('Draft Reply', item.draft_reply)}
       </CardContent>
       <CardFooter className="bg-muted/50 p-4 rounded-b-lg">
         <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-4">

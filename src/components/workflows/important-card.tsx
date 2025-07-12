@@ -83,9 +83,9 @@ export function ImportantCard({ item, onAction }: { item: any, onAction: () => v
       </CardHeader>
       <CardContent>
         {renderField('Subject', item.email_subject)}
+        {renderField('Current Customer Message', item.Customer_Email)}
         {renderField('Thread Context', item.Previous_Emails_Summary)}
         {renderField('Thought Process', item.reasoning)}
-        {renderField('Current Customer Message', item.Customer_Email)}
         
         {item.CRM_notes && (
           <div className="mb-4">

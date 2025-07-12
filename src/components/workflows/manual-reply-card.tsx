@@ -84,7 +84,7 @@ export function ManualReplyCard({ item, onAction }: { item: any, onAction: () =>
       </CardHeader>
       <CardContent>
         {renderField('Subject', item.email_subject)}
-        {renderField('Required Feedback', item.feedback)}
+        {renderField('Feedback from previous Objection', item.feedback)}
         {renderField('Thread Context', item.Previous_Emails_Summary)}
         {renderField('Thought Process', item.reasoning)}
         {renderField('Current Customer Message', item.Customer_Email)}
